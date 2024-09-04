@@ -16,8 +16,23 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path,include
+from .views import KakaoLogin ,kakao_login
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+
     path('accounts/', include('allauth.urls')),
+    path('auth/', include('dj_rest_auth.urls')),
+    # path('auth/', include('dj_rest_auth.urls')), 
+    path('auth/registration/', include('dj_rest_auth.registration.urls')), 
+    path('', include('django.contrib.auth.urls')),
+
+    #소셜로그인(카카오)
+    path('accounts/login/kakao/', kakao_login, name='kakao_login'),
+    path('accounts/login/kakao/callback/', KakaoLogin.as_view(), name='kakao_callback'),
+
+    #토큰
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
