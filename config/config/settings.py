@@ -57,7 +57,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.kakao',
     # 'allauth.socialaccount.providers.google',
-    # 'allauth.socialaccount.providers.naver',
+    'allauth.socialaccount.providers.naver',
 ]
 # AUTH_USER_MODEL = 'users.CustomUser'
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
@@ -89,6 +89,15 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
+SOCIALACCOUNT_PROVIDERS = {
+    'naver': {
+        'APP': {
+            'client_id': 'Aj79paikUojaBk6tX_my',
+            'secret': 'BFRJ4ge45G',
+        }
+    }
+}
+
 ACCOUNT_AUTHENTICATED_LOGIN_REDIRECTS = True
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
@@ -111,6 +120,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'

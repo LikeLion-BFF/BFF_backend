@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path,include
-from .views import KakaoLogin ,kakao_login
+from users.views import kakao_login, kakao_callback
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
@@ -30,9 +30,6 @@ urlpatterns = [
 
     #소셜로그인(카카오)
     path('accounts/login/kakao/', kakao_login, name='kakao_login'),
-    path('accounts/login/kakao/callback/', KakaoLogin.as_view(), name='kakao_callback'),
+    path('accounts/login/kakao/callback/', kakao_callback, name='kakao_callback'),
 
-    #토큰
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
