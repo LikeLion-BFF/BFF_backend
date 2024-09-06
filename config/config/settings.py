@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 import os
 from pathlib import Path
-# import config.db_settings as db_settings
+import config.db_settings as db_settings
 import pymysql
 pymysql.install_as_MySQLdb()
 from datetime import timedelta
