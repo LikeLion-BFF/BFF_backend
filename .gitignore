@@ -621,3 +621,6 @@ FodyWeavers.xsd
 
 # db_settings
 db_settings.py
+
+#.env
+.env
