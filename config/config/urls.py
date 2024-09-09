@@ -16,20 +16,22 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path,include
-from users.views import kakao_login, kakao_callback
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
 
-    path('accounts/', include('allauth.urls')),
-    path('auth/', include('dj_rest_auth.urls')),
-    # path('auth/', include('dj_rest_auth.urls')), 
-    path('auth/registration/', include('dj_rest_auth.registration.urls')), 
-    path('', include('django.contrib.auth.urls')),
+    # # Kakao Auth URLs
+    # path('auth/kakao/login', kakao_login),
+    # path('auth/kakao/register', kakao_register),
 
-    #소셜로그인(카카오)
-    path('accounts/login/kakao/', kakao_login, name='kakao_login'),
-    path('accounts/login/kakao/callback/', kakao_callback, name='kakao_callback'),
-
+    # # Google Auth URLs
+    # # path('auth/google/login', google_login),
+    # # path('auth/google/register', google_register),
+    # # Redirect URI handling for Google OAuth
+    # path('accounts/google/login/callback/', google_callback),  # Google OAuth Redirect URI
+    
+    # # Verification and User Detail URLs
+    # path('auth/verify', verify),
+    # path('users', user_detail),
+    # path('start-google-login/', start_google_login, name='start_google_login'),
 ]
