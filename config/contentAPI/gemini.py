@@ -1,39 +1,84 @@
 
+# import google.generativeai as genai
+# import os
+# # Create your views here.
+
+# # single_turn.py
+# genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+
+# #model = genai.GenerativeModel('gemini-pro')
+# model = genai.GenerativeModel('gemini-1.5-flash') 
+# response = model.generate_content("동아리나 모임에서 처음 만난 팀원끼리 친해질 수 있는 미션을 5가지 추천해줘. 형식은 1,2,3,4,5번호를 붙여서 부가설명없이 예를 들어 '1. 팀원끼리 셀카찍기' 이렇게 미션내용만 출력해줘")
+
+# #응답 결과 중 text필드 출력
+# print(response.text)
+
+"""
+Install the Google AI Python SDK
+
+$ pip install google-generativeai
+"""
+
 import os
 import google.generativeai as genai
+import re
 
-# 제미나이 API 키 설정
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-# 생성 설정: 다양성을 높이기 위해 temperature 값을 높게 설정
+# Create the model
 generation_config = {
-    "temperature": 0.8,  # 높일수록 더 창의적이고 다양하게 추천
-    "top_p": 0.9,
-    "top_k": 40,
-    "max_output_tokens": 1000,
-    "response_mime_type": "text/plain",
+  "temperature": 0.8,
+  "top_p": 0.95,
+  "top_k": 64,
+  "max_output_tokens": 8192,
+  "response_mime_type": "text/plain",
 }
 
-# 제미나이 모델 호출
-model = genai.GenerativeModel(model_name="gemini-1.5-flash", generation_config=generation_config)
+model = genai.GenerativeModel(
+  model_name="gemini-1.5-flash",
+  generation_config=generation_config,
+  # safety_settings = Adjust safety settings
+  # See https://ai.google.dev/gemini-api/docs/safety-settings
+)
 
-def recommend_missions():
-    # 미션 추천 요청
-    response = model.generate_content(
-        prompt="동아리나 모임에서 팀원끼리 친해질 수 있는 5가지 미션을 추천해줘. 간단한 형식으로 부탁해.",
-    )
-    
-    # 응답 출력 (텍스트 필드만 출력)
-    return response.text
+chat_session = model.start_chat(
+  history=[
+    {
+      "role": "user",
+      "parts": [
+        "우리는 미션빙고라는 서비스를 개발하고 있어. \n동아리나 모임에서 아이스브레이킹과 친목도모를 위해 주어진 미션빙고를 채우며 친해지는 것을 목적으로 해. \n여기서 너는 처음 만난 사람들이 친해지기 위해 수행하면 좋은 미션들을 추천해주는 역할을 해야해. \n미션을 추천해달라는 명령어를 받으면 1. 팀원끼리 셀카찍기 2. 같이 저녁 식사 후 인증하기 3. 팀원들끼리 별명지어주기 4. 같이 영화보러가기 5. 같이 한강가서 피크닉하기 이렇게 미션 5가지만 추천해주면 돼.다른 부가 설명은 필요 없어 이 형식을 꼭 지켜줘  \n미션을 추천해줘",
+      ],
+    },
+    {
+      "role": "model",
+      "parts": [
+        "1. 팀원끼리 셀카찍기:  함께 찍은 사진은 추억을 공유하고 나중에 다시 꺼내볼 때 즐거운 기억을 되새기게 해줄 거예요! 📸\n2. 같이 저녁 식사 후 인증하기:  맛있는 음식을 함께 먹으며 자연스럽게 이야기꽃을 피워보세요!  식사 인증샷은 덤! \n3. 팀원들끼리 별명 지어주기:  재미있는 별명은 팀워크를 더욱 돈독하게 만들어 줄 거예요!  서로에게 웃음을 선물해보세요! \n4. 같이 영화보러가기:  함께 영화를 보며 공통의 관심사를 찾고 이야기할 거리가 생길 거예요!  \n5. 같이 한강가서 피크닉하기:  따스한 햇살 아래 돗자리를 펴고 도시락을 먹으며 즐거운 시간을 보내세요!  한강에서 펼쳐지는 낭만적인 추억!",
+      ],
+    },
+    {
+      "role": "user",
+      "parts": [
+        "새로운 미션을 추천해줘",
+      ],
+    },
+    {
+      "role": "model",
+      "parts": [
+        "1. 팀원 모두의 MBTI 유형 공유하기:  서로의 성격 유형을 알아보며 팀원들에 대한 이해도를 높여보세요! \n2. 팀원 중 한 명의 꿈 이야기 들어주기:  서로의 꿈을 나누며 격려하고 응원하는 시간을 가져보세요. \n3. 팀원들과 함께 좋아하는 노래 부르기:  함께 노래를 부르며 흥겨운 시간을 보내고 팀워크를 향상시켜보세요! \n4. 팀원 중 한 명에게 칭찬 릴레이 하기:  서로의 장점을 칭찬하며 긍정적인 분위기를 조성하고 팀워크를 강화해보세요! \n5. 팀원들과 함께 웃긴 영상 보며 웃기:  함께 웃으며 스트레스를 해소하고 친목을 다지는 시간을 가져보세요!",
+      ],
+    },
+  ]
+)
 
-# 사용자가 '추천'을 누를 때마다 다른 답변을 받기 위한 호출
-def get_new_recommendation():
-    print("새로운 미션 추천:")
-    print(recommend_missions())
+response = chat_session.send_message("새로운 미션을 추천해줘")
 
-# 테스트 실행
-get_new_recommendation()
+print(response.text)
+# print("/n/n ======================히스토리======================")
+# print(chat_session.history)
 
-# 사용자가 다시 추천을 누를 때마다 동일한 방식으로 다른 세션을 시작
-get_new_recommendation()
+# 숫자(1, 2, ...)를 기준으로 텍스트를 분리
+# 숫자와 그 다음 텍스트를 기준으로 split
+missions = re.split(r'\d+\.\s', response.text)[1:]
 
+# 출력 결과 확인
+print(missions)

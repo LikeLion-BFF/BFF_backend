@@ -34,4 +34,6 @@ urlpatterns = [
     # path('auth/verify', verify),
     # path('users', user_detail),
     # path('start-google-login/', start_google_login, name='start_google_login'),
+
+    path('contentAPI/', include('contentAPI.urls')),
 ]
