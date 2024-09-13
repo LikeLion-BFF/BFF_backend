@@ -16,22 +16,44 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path,include
+from django.http import HttpResponse
+
+from users.views import (
+    # kakao_login, 
+    # kakao_register, 
+    # google_login, 
+    # google_register, 
+    google_callback,
+    google_login,
+    naver_callback,
+    naver_login,
+    verify, 
+    user_detail
+)
+
+def home(request):
+    return HttpResponse("Home Page")
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', home),
 
-    # # Kakao Auth URLs
+    # Kakao Auth URLs
     # path('auth/kakao/login', kakao_login),
     # path('auth/kakao/register', kakao_register),
 
-    # # Google Auth URLs
-    # # path('auth/google/login', google_login),
-    # # path('auth/google/register', google_register),
-    # # Redirect URI handling for Google OAuth
-    # path('accounts/google/login/callback/', google_callback),  # Google OAuth Redirect URI
-    
-    # # Verification and User Detail URLs
-    # path('auth/verify', verify),
-    # path('users', user_detail),
-    # path('start-google-login/', start_google_login, name='start_google_login'),
+    # Google Auth URLs
+    # path('auth/google/login', google_login),
+    # path('auth/google/register', google_register),
+
+    # Google 
+    path('google/login/', google_login, name='google_login'),
+    path('accounts/google/login/callback/', google_callback), 
+
+    # Naver
+    path('naver/login/', naver_login, name='naver_login'),
+    path('accounts/naver/login/callback/', naver_callback), 
+
+    path('users/verify/', verify),
+    path('users/', user_detail),
 ]
