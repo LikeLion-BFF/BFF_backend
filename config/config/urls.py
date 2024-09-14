@@ -56,7 +56,7 @@ urlpatterns = [
 
     path('users/verify/', verify),
     path('users/', user_detail),
-=======
+
     # # Google Auth URLs
     # # path('auth/google/login', google_login),
     # # path('auth/google/register', google_register),
