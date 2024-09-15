@@ -32,7 +32,7 @@ from users.views import (
 )
 
 def home(request):
-    return HttpResponse("Home Page")
+    return HttpResponse("Main Page")
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -46,28 +46,17 @@ urlpatterns = [
     # path('auth/google/login', google_login),
     # path('auth/google/register', google_register),
 
-    # Google 
+    # Google Login
     path('google/login/', google_login, name='google_login'),
     path('accounts/google/login/callback/', google_callback), 
 
-    # Naver
+    # Naver Login
     path('naver/login/', naver_login, name='naver_login'),
     path('accounts/naver/login/callback/', naver_callback), 
 
     path('users/verify/', verify),
     path('users/', user_detail),
 
-    # # Google Auth URLs
-    # # path('auth/google/login', google_login),
-    # # path('auth/google/register', google_register),
-    # # Redirect URI handling for Google OAuth
-    # path('accounts/google/login/callback/', google_callback),  # Google OAuth Redirect URI
-    
-    # # Verification and User Detail URLs
-    # path('auth/verify', verify),
-    # path('users', user_detail),
-    # path('start-google-login/', start_google_login, name='start_google_login'),
-
     path('contentAPI/', include('contentAPI.urls')),
-
+    path('bingo/', include('bingo.urls'))
 ]
