@@ -23,7 +23,7 @@ class BingoSerializer(serializers.ModelSerializer):
 
         bingo = Bingo.objects.create(**validated_data)
 
-        # Team 인스턴스 생성
+        # #Team 인스턴스 생성
         # team_objects = [Team(bingo=bingo, team_name=f'Team {i+1}') for i in range(teams)]
         # Team.objects.bulk_create(team_objects)
 
