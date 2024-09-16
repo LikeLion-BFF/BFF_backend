@@ -19,14 +19,12 @@ from django.urls import path,include
 from django.http import HttpResponse
 
 from users.views import (
-    # kakao_login, 
-    # kakao_register, 
-    # google_login, 
-    # google_register, 
-    google_callback,
+    kakao_login, 
+    kakao_callback,
     google_login,
-    naver_callback,
+    google_callback,
     naver_login,
+    naver_callback,
     verify, 
     user_detail
 )
@@ -38,13 +36,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', home),
 
-    # Kakao Auth URLs
-    # path('auth/kakao/login', kakao_login),
-    # path('auth/kakao/register', kakao_register),
-
-    # Google Auth URLs
-    # path('auth/google/login', google_login),
-    # path('auth/google/register', google_register),
+    # Kakao Login
+    path('kakao/login/', kakao_login, name='kakao_login'),
+    path('accounts/kakao/login/callback/', kakao_callback), 
 
     # Google Login
     path('google/login/', google_login, name='google_login'),

@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import CreateBingoView, JoinTeamView, BingoBoardView, MyBingoBoardView, DeleteBingoView, TeamDetailView
+from .views import CreateBingoView, JoinTeamView, BingoBoardView, TeamDetailView, MyBingoBoardView, DeleteBingoView
 
 urlpatterns = [
     path('create/', CreateBingoView.as_view(), name='create_bingo'),

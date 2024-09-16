@@ -5,13 +5,12 @@ import jwt
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
-
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from django.shortcuts import redirect
-
 from users.models import User
-from users.serializers import KakaoLoginRequestSerializer, KakaoRegisterRequestSerializer, TempUserResponseSerializer
+from users.serializers import UserResponseSerializer
+from unidecode import unidecode
 
 class KakaoAccessTokenException(Exception):
     pass
@@ -31,41 +30,60 @@ class GoogleOIDCException(Exception):
 class GoogleDataException(Exception):
     pass
 
+class KakaoAccessTokenException(Exception):
+    pass
+
+class KakaoOIDCException(Exception):
+    pass
+
+class KakaoDataException(Exception):
+    pass
+
 def exchange_kakao_access_token(access_code):
     response = requests.post(
         'https://kauth.kakao.com/oauth/token',
-        headers={
-            'Content-type': 'application/x-www-form-urlencoded;charset=utf-8',
-        },
+        headers={'Content-type': 'application/x-www-form-urlencoded;charset=utf-8'},
         data={
             'grant_type': 'authorization_code',
-            'client_id': os.environ.get('KAKAO_REST_API_KEY'),
+            'client_id': os.environ.get('KAKAO_CLIENT_ID'),
             'redirect_uri': os.environ.get('KAKAO_REDIRECT_URI'),
             'code': access_code,
-        },
+        }
     )
     if response.status_code >= 300:
         raise KakaoAccessTokenException()
     return response.json()
 
-def extract_kakao_nickname(kakao_data):
-    id_token = kakao_data.get('id_token', None)
-    if id_token is None:
-        raise KakaoDataException()
-    
-    jwks_client = jwt.PyJWKClient(os.environ.get('KAKAO_OIDC_URI'))
-    signing_key = jwks_client.get_signing_key_from_jwt(id_token)
-    signing_algol = jwt.get_unverified_header(id_token)['alg']
-    try:
-        payload = jwt.decode(
-            id_token,
-            key=signing_key.key,
-            algorithms=[signing_algol],
-            audience=os.environ.get('KAKAO_REST_API_KEY'),
-        )
-    except jwt.InvalidTokenError:
-        raise KakaoOIDCException()
-    return payload['nickname']
+def extract_kakao_user_info(kakao_data):
+    access_token = kakao_data.get('access_token')
+    if not access_token:
+        raise KakaoDataException('No access token provided')
+
+    response = requests.get(
+        'https://kapi.kakao.com/v2/user/me',
+        headers={
+            'Authorization': f'Bearer {access_token}',
+        }
+    )
+
+    if response.status_code >= 300:
+        raise KakaoDataException('Failed to fetch user info from Kakao')
+
+    user_info = response.json()
+    email = user_info.get('kakao_account', {}).get('email')
+    nickname = user_info.get('properties', {}).get('nickname')
+
+    if not nickname:
+        raise KakaoDataException('Missing nickname in Kakao user info')
+
+    # kakao 대체 이메일 생성
+    if not email:
+        email = f"{unidecode(nickname).replace(' ', '_').lower()}@kakao.com"
+
+    return {
+        'email': email,
+        'nickname': nickname,
+    }
 
 def exchange_google_access_token(access_code):
     response = requests.post(
@@ -91,7 +109,6 @@ def extract_google_user_info(google_data):
         raise GoogleDataException("No id_token in Google data")
     
     try:
-        # JWT 라이브러리를 사용하여 토큰 디코딩
         decoded_token = jwt.decode(id_token, options={"verify_signature": False})
         return decoded_token
     except jwt.DecodeError as e:
@@ -142,44 +159,31 @@ def extract_naver_user_info(naver_data):
     
     return user_data['response']
 
-@api_view(['POST'])
+@api_view(['GET'])
 @permission_classes([AllowAny])
 def kakao_login(request):
-    serializer = KakaoLoginRequestSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    data = serializer.validated_data
+    params = {
+        'client_id': os.environ.get('KAKAO_CLIENT_ID'),
+        'redirect_uri': os.environ.get('KAKAO_REDIRECT_URI'),
+        'response_type': 'code',
+    }
+    base_url = 'https://kauth.kakao.com/oauth/authorize'
+    auth_url = f"{base_url}?{'&'.join(f'{k}={v}' for k, v in params.items())}"
+    return redirect(auth_url)
 
-    try:
-        kakao_data = exchange_kakao_access_token(data['access_code'])
-        nickname = extract_kakao_nickname(kakao_data)
-    except KakaoAccessTokenException:
-        return Response({'detail': 'Access token 교환에 실패했습니다.'}, status=401)
-    except KakaoDataException:
-        return Response({'detail': 'OIDC token 정보를 확인할 수 없습니다.'}, status=401)
-    except KakaoOIDCException:
-        return Response({'detail': 'OIDC 인증에 실패했습니다.'}, status=401)
-
-    try:
-        user = User.objects.get(nickname=nickname)
-    except User.DoesNotExist:
-        return Response({'detail': '존재하지 않는 사용자입니다.'}, status=404)
-
-    refresh = RefreshToken.for_user(user)
-    return Response({
-        'access_token': str(refresh.access_token),
-        'refresh_token': str(refresh)
-    })
-
-@api_view(['POST'])
+@api_view(['GET'])
 @permission_classes([AllowAny])
-def kakao_register(request):
-    serializer = KakaoRegisterRequestSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    data = serializer.validated_data
+def kakao_callback(request):
+    code = request.GET.get('code')
+    if not code:
+        return Response({'detail': 'Kakao 인증에 실패했습니다.'}, status=400)
 
     try:
-        kakao_data = exchange_kakao_access_token(data['access_code'])
-        nickname = extract_kakao_nickname(kakao_data)
+        kakao_data = exchange_kakao_access_token(code)
+        user_info = extract_kakao_user_info(kakao_data)
+        nickname = user_info['nickname']
+        email = user_info['email']
+
     except KakaoAccessTokenException:
         return Response({'detail': 'Access token 교환에 실패했습니다.'}, status=401)
     except KakaoDataException:
@@ -187,27 +191,30 @@ def kakao_register(request):
     except KakaoOIDCException:
         return Response({'detail': 'OIDC 인증에 실패했습니다.'}, status=401)
 
-    ok = False
-    try:
-        user = User.objects.get(nickname=nickname)
-    except User.DoesNotExist:
-        ok = True
+    user, created = User.objects.get_or_create(
+        email=email,
+        defaults={'nickname': nickname, 'description': 'Kakao 사용자'}
+    )
 
-    if not ok:
-        return Response({'detail': '이미 등록 된 사용자를 중복 등록할 수 없습니다.'}, status=400)
-
-    user = User.objects.create_user(nickname=nickname, description=data['description'])
     refresh = RefreshToken.for_user(user)
-    return Response({
+    response_data = {
         'access_token': str(refresh.access_token),
-        'refresh_token': str(refresh)
-    })
+        'refresh_token': str(refresh),
+        'user_created': created
+    }
+
+    frontend_redirect_url = os.environ.get('FRONTEND_REDIRECT_URL', '')
+    if frontend_redirect_url:
+        redirect_url = f"{frontend_redirect_url}?{'&'.join(f'{k}={v}' for k, v in response_data.items())}"
+        return redirect(redirect_url)
+    else:
+        return Response(response_data)
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def google_login(request):
-    print("Client ID:", os.environ.get('GOOGLE_CLIENT_ID'))
-    print("Redirect URI:", os.environ.get('GOOGLE_REDIRECT_URI'))
+    # print("Client ID:", os.environ.get('GOOGLE_CLIENT_ID'))
+    # print("Redirect URI:", os.environ.get('GOOGLE_REDIRECT_URI'))
     params = {
         'client_id': os.environ.get('GOOGLE_CLIENT_ID'),
         'redirect_uri': os.environ.get('GOOGLE_REDIRECT_URI'),
@@ -221,10 +228,10 @@ def google_login(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def google_callback(request):
-    print("Client ID:", os.environ.get('GOOGLE_CLIENT_ID'))
-    print("Client Secret:", os.environ.get('GOOGLE_CLIENT_SECRET'))
-    print("Redirect URI:", os.environ.get('GOOGLE_REDIRECT_URI'))
-    print("OIDC URI:", os.environ.get('GOOGLE_OIDC_URI'))
+    # print("Client ID:", os.environ.get('GOOGLE_CLIENT_ID'))
+    # print("Client Secret:", os.environ.get('GOOGLE_CLIENT_SECRET'))
+    # print("Redirect URI:", os.environ.get('GOOGLE_REDIRECT_URI'))
+    # print("OIDC URI:", os.environ.get('GOOGLE_OIDC_URI'))
 
     code = request.GET.get('code')
     if not code:
@@ -277,7 +284,6 @@ def naver_login(request):
     auth_url = f"{base_url}?{'&'.join(f'{k}={v}' for k, v in params.items())}"
     return redirect(auth_url)
 
-
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def naver_callback(request):
@@ -314,7 +320,6 @@ def naver_callback(request):
     else:
         return Response(response_data)
 
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def verify(request):
@@ -323,5 +328,5 @@ def verify(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def user_detail(request):
-    serializer = TempUserResponseSerializer(request.user)
+    serializer = UserResponseSerializer(request.user)
     return Response(serializer.data)

@@ -1,5 +1,4 @@
-import random
-import string  
+import random, string
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import permission_classes
@@ -9,11 +8,13 @@ from django.db import transaction
 from .models import Bingo, Team, User_Team, BingoCell
 from .serializers import BingoSerializer, JoinTeamSerializer
 
+# 빙고판 입장 code 생성
 def generate_random_code(length=8):
     characters = string.ascii_uppercase + string.digits
     return ''.join(random.choice(characters) for _ in range(length))
 
 class CreateBingoView(APIView):
+    # 빙고판 생성
     @permission_classes([IsAuthenticated])
     @transaction.atomic
     def post(self, request):
@@ -31,22 +32,19 @@ class CreateBingoView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 class JoinTeamView(APIView):
+    # 빙고판 참여
     @permission_classes([IsAuthenticated])
-
     def post(self, request):
-        # 요청 본문에서 bingo_id 가져오기
         bingo_id = request.data.get('bingo_id')
 
         if not bingo_id:
             return Response({'error': '빙고 ID를 제공해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 해당 bingo_id에 대한 Bingo 객체를 가져옵니다.
         try:
             bingo = Bingo.objects.get(id=bingo_id)
         except Bingo.DoesNotExist:
             return Response({'error': '해당 빙고 게임을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # 시리얼라이저에 데이터를 전달합니다.
         serializer = JoinTeamSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             user_team = serializer.save(user=request.user, bingo=bingo)
@@ -57,31 +55,29 @@ class JoinTeamView(APIView):
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-
 class TeamDetailView(APIView):
+    # 빙고판 참여 팀 정보
     @permission_classes([IsAuthenticated])
     def get(self, request):
         bingo_id = request.query_params.get('bingo_id')
-        team_name = request.query_params.get('team_name')
+        team_id = request.query_params.get('team_id')
 
-        if not team_name:
+
+        if not team_id:
             return Response({'error': '팀 이름을 제공해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
         if not bingo_id:
             return Response({'error': '빙고 ID를 제공해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            # 해당 bingo_id에 대한 Bingo 인스턴스 확인
             bingo = Bingo.objects.get(id=bingo_id)
         except Bingo.DoesNotExist:
             return Response({'error': '해당 빙고 게임을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
 
         try:
-            # Bingo에 연결된 Team에서 팀 이름으로 팀 찾기
-            team = Team.objects.get(bingo=bingo, team_name=team_name)
+            team = Team.objects.get(id=team_id, bingo=bingo)
         except Team.DoesNotExist:
-            return Response({'error': '팀을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': '해당 팀을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # 팀의 멤버 목록을 가져옵니다.
         user_teams = User_Team.objects.filter(team=team)
         members = [user_team.name for user_team in user_teams]
 
@@ -93,14 +89,44 @@ class TeamDetailView(APIView):
         
         return Response(response_data, status=status.HTTP_200_OK)
     
-class BingoBoardView(APIView):
-    @permission_classes([IsAuthenticated])
+    # def post(self, request):
+    #     bingo_id = request.data.get('bingo_id')
+    #     team_name = request.data.get('team_name')
 
+        # if not team_id:
+        #     return Response({'error': '팀 이름을 제공해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
+        # if not bingo_id:
+        #     return Response({'error': '빙고 ID를 제공해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # try:
+        #     bingo = Bingo.objects.get(id=bingo_id)
+        # except Bingo.DoesNotExist:
+        #     return Response({'error': '해당 빙고 게임을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # try:
+        #     team = Team.objects.get(bingo=bingo, team_name=team_id)
+        # except Team.DoesNotExist:
+        #     return Response({'error': '팀을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # user_teams = User_Team.objects.filter(team=team)
+        # members = [user_team.name for user_team in user_teams]
+
+        # response_data = {
+        #     'team_name': team.team_name,
+        #     'member_count': len(members),
+        #     'members': members
+        # }
+        
+        # return Response(response_data, status=status.HTTP_200_OK)
+    
+class BingoBoardView(APIView):
+    # 빙고판 정보
+    @permission_classes([IsAuthenticated])
     def get(self, request):
         bingo_id = request.query_params.get('bingo_id')
-        team_name = request.query_params.get('team_name')
+        team_id = request.query_params.get('team_id')
 
-        if not team_name:
+        if not team_id:
             return Response({'error': '팀 이름을 제공해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
         if not bingo_id:
             return Response({'error': '빙고 ID를 제공해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -111,11 +137,10 @@ class BingoBoardView(APIView):
             return Response({'error': '해당 빙고 게임을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
 
         try:
-            team = Team.objects.get(bingo=bingo, team_name=team_name)
+            team = Team.objects.get(id=team_id, bingo=bingo)
         except Team.DoesNotExist:
             return Response({'error': '해당 팀을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # 모든 사용자가 BingoCell 데이터를 조회할 수 있도록
         bingo_cells = BingoCell.objects.filter(bingo=bingo, team=team)
         cells_data = [
             {
@@ -132,7 +157,44 @@ class BingoBoardView(APIView):
         return Response({
             "bingo_cells": cells_data
         })
+
+    # def post(self, request):
+    #     bingo_id = request.data.get('bingo_id')
+    #     team_name = request.data.get('team_name')
+
+        # if not team_id:
+        #     return Response({'error': '팀 이름을 제공해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
+        # if not bingo_id:
+        #     return Response({'error': '빙고 ID를 제공해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # try:
+        #     bingo = Bingo.objects.get(id=bingo_id)
+        # except Bingo.DoesNotExist:
+        #     return Response({'error': '해당 빙고 게임을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # try:
+        #     team = Team.objects.get(bingo=bingo, team_name=team_id)
+        # except Team.DoesNotExist:
+        #     return Response({'error': '해당 팀을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # bingo_cells = BingoCell.objects.filter(bingo=bingo, team=team)
+        # cells_data = [
+        #     {
+        #         "row": cell.row,
+        #         "col": cell.col,
+        #         "content": cell.content,
+        #         "is_completed": cell.is_completed_yn,
+        #         "completed_photo": cell.completed_photo.url if cell.completed_photo else None,
+        #         "completed_text": cell.completed_text
+        #     }
+        #     for cell in bingo_cells
+        # ]
+
+        # return Response({
+        #     "bingo_cells": cells_data
+        # })
     
+    # 빙고판 설정 수정
     @permission_classes([IsAuthenticated])
     def patch(self, request):
         bingo_id = request.data.get('bingo_id')
@@ -151,7 +213,7 @@ class BingoBoardView(APIView):
             return Response({'error': '해당 빙고 게임을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
 
         if bingo.creator != request.user:
-            return Response({'error': '권한이 없습니다. 이 빙고 게임의 작성자가 아닙니다.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'error': '해당 빙고의 수정 권한이 없습니다.'}, status=status.HTTP_403_FORBIDDEN)
 
         data = {
             'title': title,
@@ -203,6 +265,7 @@ class MyBingoBoardView(APIView):
         }, status=status.HTTP_200_OK)
     
 class DeleteBingoView(APIView):
+    # 빙고판 삭제
     @permission_classes([IsAuthenticated])
     def delete(self, request):
         bingo_id = request.data.get('bingo_id')
@@ -212,7 +275,7 @@ class DeleteBingoView(APIView):
             return Response({'error': '해당 빙고 게임을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
 
         if bingo.creator != request.user:
-            return Response({'error': '권한이 없습니다. 이 빙고 게임의 작성자가 아닙니다.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'error': '해당 빙고의 삭제 권한이 없습니다.'}, status=status.HTTP_403_FORBIDDEN)
 
         bingo.delete()
         return Response({'빙고 게임이 삭제되었습니다.'}, status=status.HTTP_204_NO_CONTENT)
