@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db import transaction
 from .models import Bingo, Team, User_Team, BingoCell
+from rank.models import BingoProgress
 from .serializers import BingoSerializer, JoinTeamSerializer, UserSerializer
 
 # 빙고판 입장 code 생성
@@ -200,7 +201,7 @@ class CreatorView(APIView):
         return Response(response_data)
 
 class BingoBoardView(APIView):
-    # 빙고판 정보
+    # 빙고판 정보 + 랭킹정보 반환
     @permission_classes([IsAuthenticated])
     def get(self, request):
         bingo_id = request.query_params.get('bingo_id')
@@ -233,10 +234,24 @@ class BingoBoardView(APIView):
             }
             for cell in bingo_cells
         ]
+        # BingoProgressTotalView와 유사한 진행 상황 데이터 가져오기
+        progress_data = BingoProgress.objects.filter(bingo=bingo).order_by(
+            '-completed_bingo_count',
+            '-completed_cell_count',
+            'team__team_name'
+        ).values(
+            'team__team_name', 'completed_bingo_count', 'completed_cell_count'
+        )
 
+        # BingoBoard의 응답 데이터에 진행 상황 데이터 추가
         return Response({
-            "bingo_cells": cells_data
-        })
+            "bingo_cells": cells_data,
+            "rank": list(progress_data)  # 진행 상황 데이터를 추가
+        }, status=status.HTTP_200_OK)
+
+        # return Response({
+        #     "bingo_cells": cells_data
+        # })
 
     # def post(self, request):
     #     bingo_id = request.data.get('bingo_id')
@@ -359,3 +374,7 @@ class DeleteBingoView(APIView):
 
         bingo.delete()
         return Response({'빙고 게임이 삭제되었습니다.'}, status=status.HTTP_204_NO_CONTENT)
+    
+## 빙고판 인증
+# class UpdateProgressView(APIView):
+#      @permission_classes([IsAuthenticated])
