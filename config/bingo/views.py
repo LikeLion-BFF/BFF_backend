@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db import transaction
 from .models import Bingo, Team, User_Team, BingoCell
+from rank.models import BingoProgress
 from .serializers import BingoSerializer, JoinTeamSerializer, UserSerializer
 
 # 빙고판 입장 code 생성
@@ -140,7 +141,7 @@ class CreatorView(APIView):
         return Response(response_data)
 
 class BingoBoardView(APIView):
-    # 빙고판 정보
+    # 빙고판 정보 + 랭킹정보 반환
     @permission_classes([IsAuthenticated])
     def get(self, request):
         bingo_id = request.query_params.get('bingo_id')
@@ -173,10 +174,65 @@ class BingoBoardView(APIView):
             }
             for cell in bingo_cells
         ]
+        # BingoProgressTotalView와 유사한 진행 상황 데이터 가져오기
+        progress_data = BingoProgress.objects.filter(bingo=bingo).order_by(
+            '-completed_bingo_count',
+            '-completed_cell_count',
+            'team__team_name'
+        ).values(
+            'team__team_name', 'completed_bingo_count', 'completed_cell_count'
+        )
 
+        # BingoBoard의 응답 데이터에 진행 상황 데이터 추가
         return Response({
+
             "bingo_cells": cells_data
         })
+
+            "bingo_cells": cells_data,
+            "rank": list(progress_data)  # 진행 상황 데이터를 추가
+        }, status=status.HTTP_200_OK)
+
+        # return Response({
+        #     "bingo_cells": cells_data
+        # })
+
+    # def post(self, request):
+    #     bingo_id = request.data.get('bingo_id')
+    #     team_name = request.data.get('team_name')
+
+        # if not team_id:
+        #     return Response({'error': '팀 이름을 제공해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
+        # if not bingo_id:
+        #     return Response({'error': '빙고 ID를 제공해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # try:
+        #     bingo = Bingo.objects.get(id=bingo_id)
+        # except Bingo.DoesNotExist:
+        #     return Response({'error': '해당 빙고 게임을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # try:
+        #     team = Team.objects.get(bingo=bingo, team_name=team_id)
+        # except Team.DoesNotExist:
+        #     return Response({'error': '해당 팀을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # bingo_cells = BingoCell.objects.filter(bingo=bingo, team=team)
+        # cells_data = [
+        #     {
+        #         "row": cell.row,
+        #         "col": cell.col,
+        #         "content": cell.content,
+        #         "is_completed": cell.is_completed_yn,
+        #         "completed_photo": cell.completed_photo.url if cell.completed_photo else None,
+        #         "completed_text": cell.completed_text
+        #     }
+        #     for cell in bingo_cells
+        # ]
+
+        # return Response({
+        #     "bingo_cells": cells_data
+        # })
+
     
     # 빙고판 설정 수정
     @permission_classes([IsAuthenticated])
@@ -263,3 +319,7 @@ class DeleteBingoView(APIView):
 
         bingo.delete()
         return Response({'빙고 게임이 삭제되었습니다.'}, status=status.HTTP_204_NO_CONTENT)
+    
+## 빙고판 인증
+# class UpdateProgressView(APIView):
+#      @permission_classes([IsAuthenticated])

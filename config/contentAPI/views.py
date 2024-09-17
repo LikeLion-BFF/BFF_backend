@@ -5,10 +5,12 @@ from rest_framework import status
 import os
 import google.generativeai as genai
 import re
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import permission_classes
 
 
 class RecommendMissions(APIView):
-    
+    @permission_classes([IsAuthenticated])
     def post(self, request):
         # 제미나이 API 설정
         genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
