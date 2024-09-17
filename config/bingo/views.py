@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db import transaction
 from .models import Bingo, Team, User_Team, BingoCell
-from .serializers import BingoSerializer, JoinTeamSerializer
+from .serializers import BingoSerializer, JoinTeamSerializer, UserSerializer
 
 # 빙고판 입장 code 생성
 def generate_random_code(length=8):
@@ -26,24 +26,80 @@ class CreateBingoView(APIView):
             bingo = serializer.save(creator=user, code=code)
 
             return Response({
+                'bingo_id':bingo.id,
                 'code': bingo.code,
             }, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-class JoinTeamView(APIView):
-    # 빙고판 참여
+# class JoinTeamView(APIView):
+#     # 빙고판 참여
+#     @permission_classes([IsAuthenticated])
+#     def post(self, request):
+#         bingo_id = request.data.get('bingo_id')
+
+#         if not bingo_id:
+#             return Response({'error': '빙고 ID를 제공해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
+
+#         try:
+#             bingo = Bingo.objects.get(id=bingo_id)
+#         except Bingo.DoesNotExist:
+#             return Response({'error': '해당 빙고 게임을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+
+#         serializer = JoinTeamSerializer(data=request.data, context={'request': request})
+#         if serializer.is_valid():
+#             user_team = serializer.save(user=request.user, bingo=bingo)
+#             return Response({
+#                 'message': '팀 참여가 완료되었습니다.',
+#                 'team': user_team.team.team_name,
+#                 'bingo': user_team.bingo.title
+#             }, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class BingoJoinView(APIView):
+    # 빙고판 참여 (1단계: 코드 검증 및 팀 목록 반환)
     @permission_classes([IsAuthenticated])
     def post(self, request):
         bingo_id = request.data.get('bingo_id')
+        code = request.data.get('code')
 
-        if not bingo_id:
-            return Response({'error': '빙고 ID를 제공해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not bingo_id or not code:
+            return Response({'error': '빙고 ID와 코드를 제공해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             bingo = Bingo.objects.get(id=bingo_id)
         except Bingo.DoesNotExist:
-            return Response({'error': '해당 빙고 게임을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': '해당 빙고를 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # 코드 일치 여부 확인
+        if bingo.code != code:
+            return Response({'error': '입력한 코드가 잘못되었습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 코드가 일치하면 빙고에 속한 팀 목록 반환
+        teams = Team.objects.filter(bingo=bingo)
+        team_names = teams.values_list('team_name', flat=True)
+
+        return Response({
+            'message': '팀 목록을 확인하고 팀을 선택하세요.',
+            'teams': team_names
+        }, status=status.HTTP_200_OK)
+
+
+class JoinTeamView(APIView):
+    # 빙고판 참여 (2단계: 팀 선택 및 참여 완료)
+    @permission_classes([IsAuthenticated])
+    def post(self, request):
+        bingo_id = request.data.get('bingo_id')
+        team_name = request.data.get('team_name')
+        name = request.data.get('name')
+
+        if not bingo_id or not team_name or not name:
+            return Response({'error': '빙고 ID, 팀 이름 및 닉네임을 제공해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            bingo = Bingo.objects.get(id=bingo_id)
+        except Bingo.DoesNotExist:
+            return Response({'error': '해당 빙고를 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = JoinTeamSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
@@ -51,9 +107,10 @@ class JoinTeamView(APIView):
             return Response({
                 'message': '팀 참여가 완료되었습니다.',
                 'team': user_team.team.team_name,
-                'bingo': user_team.bingo.title
+                'name': user_team.name
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     
 class TeamDetailView(APIView):
     # 빙고판 참여 팀 정보
@@ -118,7 +175,30 @@ class TeamDetailView(APIView):
         # }
         
         # return Response(response_data, status=status.HTTP_200_OK)
-    
+
+class CreatorView(APIView):
+    # 빙고판 관리자 정보
+    @permission_classes([IsAuthenticated])
+    def get(self, request):
+        bingo_id = request.query_params.get('bingo_id')
+        bingo = Bingo.objects.get(id=bingo_id)
+        creator = bingo.creator 
+
+        if not bingo_id:
+            return Response({'error': '빙고 ID를 제공해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            bingo = Bingo.objects.get(id=bingo_id)
+        except Bingo.DoesNotExist:
+            return Response({'error': '해당 빙고 게임을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        creator_data = UserSerializer(creator).data  
+        response_data = {
+            'creator': creator_data
+        }
+
+        return Response(response_data)
+
 class BingoBoardView(APIView):
     # 빙고판 정보
     @permission_classes([IsAuthenticated])

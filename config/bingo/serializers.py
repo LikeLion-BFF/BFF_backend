@@ -1,5 +1,11 @@
 from rest_framework import serializers
 from .models import Bingo, BingoCell, Team, User_Team
+from .models import User
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id']
 
 class BingoCellSerializer(serializers.ModelSerializer):
     class Meta:
@@ -29,7 +35,7 @@ class BingoSerializer(serializers.ModelSerializer):
 
         team_objects = []
         for i in range(teams):
-            team = Team.objects.create(bingo=bingo, team_name=f'Team {i+1}')
+            team = Team.objects.create(bingo=bingo, team_name=f'{i+1}팀')
             team_objects.append(team)
 
         # BingoCell 인스턴스 생성
@@ -49,18 +55,16 @@ class BingoSerializer(serializers.ModelSerializer):
         return bingo
 
 class JoinTeamSerializer(serializers.ModelSerializer):
-    code = serializers.CharField(write_only=True)
     team_name = serializers.CharField()
     name = serializers.CharField()
-    bingo_id = serializers.IntegerField(write_only=True) 
+    bingo_id = serializers.IntegerField(write_only=True)
 
     class Meta:
         model = User_Team
-        fields = ['team_name', 'name', 'code', 'bingo_id']
+        fields = ['team_name', 'name', 'bingo_id']
 
     def validate(self, attrs):
         team_name = attrs.get('team_name')
-        code = attrs.get('code')
         bingo_id = attrs.get('bingo_id')
 
         try:
@@ -72,9 +76,6 @@ class JoinTeamSerializer(serializers.ModelSerializer):
             bingo = Bingo.objects.get(id=bingo_id)
         except Bingo.DoesNotExist:
             raise serializers.ValidationError({'bingo_id': '유효하지 않은 빙고 게임입니다.'})
-
-        if bingo.code != code:
-            raise serializers.ValidationError({'code': '입력한 코드가 잘못되었습니다.'})
 
         if User_Team.objects.filter(user=self.context['request'].user, bingo=bingo).exists():
             raise serializers.ValidationError({'non_field_errors': '이미 해당 빙고 게임에 참여하고 있습니다.'})
