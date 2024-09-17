@@ -48,5 +48,9 @@ urlpatterns = [
 
     path('contentAPI/', include('contentAPI.urls')),
     path('bingo/', include('bingo.urls')),
+
+    path('rank/', include('rank.urls')),
+
     path('users/', include('users.urls')),
+
 ]

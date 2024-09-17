@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'community',
     'contentAPI',
     'users',
+    'rank',
 
     'corsheaders',
     'rest_framework',
@@ -94,10 +95,10 @@ WSGI_APPLICATION = 'config.wsgi.application'
 #rest framework
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
+        # 'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # 'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
 }
 
