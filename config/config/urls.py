@@ -52,5 +52,6 @@ urlpatterns = [
     path('users/', user_detail),
 
     path('contentAPI/', include('contentAPI.urls')),
-    path('bingo/', include('bingo.urls'))
+    path('bingo/', include('bingo.urls')),
+    path('rank/', include('rank.urls')),
 ]
