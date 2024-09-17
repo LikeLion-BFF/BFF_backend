@@ -8,6 +8,7 @@ from django.db import transaction
 from .models import Bingo, Team, User_Team, BingoCell
 from rank.models import BingoProgress
 from .serializers import BingoSerializer, JoinTeamSerializer, UserSerializer
+from django.shortcuts import get_object_or_404
 
 # 빙고판 입장 code 생성
 def generate_random_code(length=8):
@@ -183,12 +184,8 @@ class BingoBoardView(APIView):
             'team__team_name', 'completed_bingo_count', 'completed_cell_count'
         )
 
-        # BingoBoard의 응답 데이터에 진행 상황 데이터 추가
+       # BingoBoard의 응답 데이터에 진행 상황 데이터 추가
         return Response({
-
-            "bingo_cells": cells_data
-        })
-
             "bingo_cells": cells_data,
             "rank": list(progress_data)  # 진행 상황 데이터를 추가
         }, status=status.HTTP_200_OK)
@@ -321,5 +318,83 @@ class DeleteBingoView(APIView):
         return Response({'빙고 게임이 삭제되었습니다.'}, status=status.HTTP_204_NO_CONTENT)
     
 ## 빙고판 인증
-# class UpdateProgressView(APIView):
-#      @permission_classes([IsAuthenticated])
+class UpdateProgressView(APIView):
+    @permission_classes([IsAuthenticated])
+    
+    def post(self, request, *args, **kwargs):
+        # 요청 데이터에서 필요한 값을 가져옴
+        bingo_id = request.data.get('bingo_id')
+        team_id = request.data.get('team_id')
+        row = request.data.get('row')
+        col = request.data.get('col')
+        completed_photo = request.FILES.get('completed_photo')  # 파일은 FILES에서 가져옴
+        completed_text = request.data.get('completed_text', '')  # 값이 없을 때 빈 문자열로 저장
+
+        # 필수 파라미터가 없는 경우 에러 응답
+        if not bingo_id or not team_id or row is None or col is None:
+            return Response({'error': '필수 파라미터가 누락되었습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Bingo, Team 객체 확인
+        bingo = get_object_or_404(Bingo, id=bingo_id)
+        team = get_object_or_404(Team, id=team_id, bingo=bingo)
+
+        # BingoCell 찾기
+        try:
+            bingo_cell = BingoCell.objects.get(bingo=bingo, team=team, row=row, col=col)
+        except BingoCell.DoesNotExist:
+            return Response({'error': '해당 빙고 셀을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # BingoCell 업데이트
+        bingo_cell.is_completed_yn = True
+        bingo_cell.completed_photo = completed_photo if completed_photo else bingo_cell.completed_photo
+        bingo_cell.completed_text = completed_text  # 값이 없을 때 빈 문자열 저장
+        bingo_cell.save()  # 변경 사항 저장
+
+        # BingoProgress 업데이트: completed_cell_count 값을 +1
+        try:
+            bingo_progress = BingoProgress.objects.get(bingo=bingo, team=team)
+            bingo_progress.completed_cell_count += 1
+            bingo_progress.save()
+        except BingoProgress.DoesNotExist:
+            return Response({'error': '빙고 진행 데이터를 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # 빙고 완성 여부 검사 및 completed_bingo_count 업데이트
+        if self.check_bingo_completion(bingo, team):
+            bingo_progress.completed_bingo_count += 1
+            bingo_progress.save()
+
+        return Response({'message': '빙고 셀이 성공적으로 업데이트되었습니다.'}, status=status.HTTP_200_OK)
+
+    def check_bingo_completion(self, bingo, team):
+        """
+        빙고판에서 가로, 세로, 대각선이 모두 완료되었는지 확인하는 메서드
+        Bingo의 size에 따라 빙고판 크기가 다르므로 이를 기반으로 검사
+        """
+        size = int(bingo.size)  # 빙고판 크기 (3x3, 4x4, 5x5 등)
+        
+        # 빙고판의 모든 칸 가져오기
+        bingo_cells = BingoCell.objects.filter(bingo=bingo, team=team)
+
+        # 1. 가로 검사 (각 행이 모두 완료되었는지 확인)
+        for row in range(1, size + 1):
+            row_cells = bingo_cells.filter(row=row)
+            if all(cell.is_completed_yn for cell in row_cells):
+                return True  # 가로 한 줄이 완성되었으면 빙고 완성
+
+        # 2. 세로 검사 (각 열이 모두 완료되었는지 확인)
+        for col in range(1, size + 1):
+            col_cells = bingo_cells.filter(col=col)
+            if all(cell.is_completed_yn for cell in col_cells):
+                return True  # 세로 한 줄이 완성되었으면 빙고 완성
+
+        # 3. 대각선 검사 (왼쪽 위에서 오른쪽 아래)
+        diagonal1_cells = [bingo_cells.get(row=i, col=i) for i in range(1, size + 1)]
+        if all(cell.is_completed_yn for cell in diagonal1_cells):
+            return True  # 왼쪽 위에서 오른쪽 아래로 대각선 완성
+
+        # 4. 대각선 검사 (오른쪽 위에서 왼쪽 아래)
+        diagonal2_cells = [bingo_cells.get(row=i, col=(size - i + 1)) for i in range(1, size + 1)]
+        if all(cell.is_completed_yn for cell in diagonal2_cells):
+            return True  # 오른쪽 위에서 왼쪽 아래로 대각선 완성
+
+        return False  # 빙고가 완성되지 않음

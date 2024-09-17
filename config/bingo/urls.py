@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import CreateBingoView, BingoJoinView, JoinTeamView, BingoBoardView, TeamDetailView, CreatorView, MyBingoBoardView, DeleteBingoView
+from .views import CreateBingoView, BingoJoinView, JoinTeamView, BingoBoardView, TeamDetailView, CreatorView, MyBingoBoardView, DeleteBingoView,UpdateProgressView
 
 urlpatterns = [
     path('create/', CreateBingoView.as_view(), name='create_bingo'),
@@ -9,5 +9,6 @@ urlpatterns = [
     path('team/detail/', TeamDetailView.as_view(), name='team_detail'),
     path('creator/detail/', CreatorView.as_view(), name='creator_detail'),
     path('list/', MyBingoBoardView.as_view(), name='my_bingo_list'),  
-    path('delete/', DeleteBingoView.as_view(), name='delete_bingo')
+    path('delete/', DeleteBingoView.as_view(), name='delete_bingo'),
+    path('complete/cell/', UpdateProgressView.as_view(), name='perform_bingo'),
 ]
