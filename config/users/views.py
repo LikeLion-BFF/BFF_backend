@@ -12,6 +12,10 @@ from users.models import User
 from users.serializers import UserResponseSerializer
 from unidecode import unidecode
 
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
+from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework import status
+
 class KakaoAccessTokenException(Exception):
     pass
 
@@ -191,9 +195,11 @@ def kakao_callback(request):
     except KakaoOIDCException:
         return Response({'detail': 'OIDC 인증에 실패했습니다.'}, status=401)
 
+    description = f'Kakao {nickname}'
+
     user, created = User.objects.get_or_create(
         email=email,
-        defaults={'nickname': nickname, 'description': 'Kakao 사용자'}
+        defaults={'nickname': nickname, 'description': description}
     )
 
     refresh = RefreshToken.for_user(user)
@@ -330,3 +336,18 @@ def verify(request):
 def user_detail(request):
     serializer = UserResponseSerializer(request.user)
     return Response(serializer.data)
+
+class TokenRefreshView(TokenRefreshView):
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.data.get('refresh_token')
+        if not refresh_token:
+            return Response({'detail': 'Refresh token is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Refresh token을 검증, 새로운 access token 발급
+            token = RefreshToken(refresh_token)
+            new_access_token = str(token.access_token)
+            return Response({'access_token': new_access_token}, status=status.HTTP_200_OK)
+        
+        except TokenError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_401_UNAUTHORIZED)

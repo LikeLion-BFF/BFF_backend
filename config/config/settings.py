@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 import os
 from pathlib import Path
+from datetime import timedelta
 
 import config.db_settings as db_settings
 import pymysql
@@ -99,6 +100,11 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         # 'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=50),  # 액세스 토큰의 유효 기간
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),   # 리프레시 토큰의 유효 기간
 }
 
 # Database
