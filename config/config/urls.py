@@ -25,8 +25,6 @@ from users.views import (
     google_callback,
     naver_login,
     naver_callback,
-    verify, 
-    user_detail
 )
 
 def home(request):
@@ -48,9 +46,7 @@ urlpatterns = [
     path('naver/login/', naver_login, name='naver_login'),
     path('accounts/naver/login/callback/', naver_callback), 
 
-    path('users/verify/', verify),
-    path('users/', user_detail),
-
     path('contentAPI/', include('contentAPI.urls')),
-    path('bingo/', include('bingo.urls'))
+    path('bingo/', include('bingo.urls')),
+    path('users/', include('users.urls')),
 ]
