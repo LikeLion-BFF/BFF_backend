@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Bingo, BingoCell, Team, User_Team
 from .models import User
+from rank.models import BingoProgress
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -37,6 +38,9 @@ class BingoSerializer(serializers.ModelSerializer):
         for i in range(teams):
             team = Team.objects.create(bingo=bingo, team_name=f'{i+1}팀')
             team_objects.append(team)
+
+            # BingoProgress 인스턴스 생성
+            BingoProgress.objects.create(bingo=bingo, team=team)
 
         # BingoCell 인스턴스 생성
         for team in team_objects:
