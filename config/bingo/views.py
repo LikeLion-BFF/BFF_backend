@@ -322,7 +322,10 @@ class DeleteBingoView(APIView):
         bingo.delete()
         return Response({'빙고 게임이 삭제되었습니다.'}, status=status.HTTP_204_NO_CONTENT)
     
-## 빙고판 인증
+## 빙고판 완료 인증
+    #step1. 해당 빙고판의 해당 셀을 찾아가 is_completed_yn,photo,text업데이트
+    #step2. BingoProgress의 completed_cell_count +1
+    #step3. BingoProgress의 completed_bingo_count검증해서 빙고가 완성되면 +1
 class UpdateProgressView(APIView):
     @permission_classes([IsAuthenticated])
     
@@ -364,42 +367,47 @@ class UpdateProgressView(APIView):
             return Response({'error': '빙고 진행 데이터를 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
 
         # 빙고 완성 여부 검사 및 completed_bingo_count 업데이트
-        if self.check_bingo_completion(bingo, team):
-            bingo_progress.completed_bingo_count += 1
-            bingo_progress.save()
+        calculated_bingo_count = self.check_bingo_completion(bingo, team)
+
+        # 계산된 빙고 카운트와 DB에 저장된 값 비교
+        if calculated_bingo_count != bingo_progress.completed_bingo_count:
+            bingo_progress.completed_bingo_count = calculated_bingo_count
+            bingo_progress.save()  # 값이 다를 때만 업데이트
 
         return Response({'message': '빙고 셀이 성공적으로 업데이트되었습니다.'}, status=status.HTTP_200_OK)
 
     def check_bingo_completion(self, bingo, team):
         """
-        빙고판에서 가로, 세로, 대각선이 모두 완료되었는지 확인하는 메서드
-        Bingo의 size에 따라 빙고판 크기가 다르므로 이를 기반으로 검사
+        빙고판에서 가로, 세로, 대각선이 완전히 완료되었는지 확인하는 메서드.
+        완성된 빙고의 개수를 반환.
         """
-        size = int(bingo.size)  # 빙고판 크기 (3x3, 4x4, 5x5 등)
+        size = int(bingo.size)  # 빙고판 크기 (예: 3x3, 4x4, 5x5 등)
         
         # 빙고판의 모든 칸 가져오기
         bingo_cells = BingoCell.objects.filter(bingo=bingo, team=team)
 
-        # 1. 가로 검사 (각 행이 모두 완료되었는지 확인)
+        completed_bingo_count = 0  # 완성된 빙고 개수
+
+        # 1. 가로 검사
         for row in range(1, size + 1):
             row_cells = bingo_cells.filter(row=row)
             if all(cell.is_completed_yn for cell in row_cells):
-                return True  # 가로 한 줄이 완성되었으면 빙고 완성
+                completed_bingo_count += 1  # 가로 줄이 완성되었으면 빙고 추가
 
-        # 2. 세로 검사 (각 열이 모두 완료되었는지 확인)
+        # 2. 세로 검사
         for col in range(1, size + 1):
             col_cells = bingo_cells.filter(col=col)
             if all(cell.is_completed_yn for cell in col_cells):
-                return True  # 세로 한 줄이 완성되었으면 빙고 완성
+                completed_bingo_count += 1  # 세로 줄이 완성되었으면 빙고 추가
 
         # 3. 대각선 검사 (왼쪽 위에서 오른쪽 아래)
         diagonal1_cells = [bingo_cells.get(row=i, col=i) for i in range(1, size + 1)]
         if all(cell.is_completed_yn for cell in diagonal1_cells):
-            return True  # 왼쪽 위에서 오른쪽 아래로 대각선 완성
+            completed_bingo_count += 1  # 왼쪽 위에서 오른쪽 아래로 대각선 완성
 
         # 4. 대각선 검사 (오른쪽 위에서 왼쪽 아래)
         diagonal2_cells = [bingo_cells.get(row=i, col=(size - i + 1)) for i in range(1, size + 1)]
         if all(cell.is_completed_yn for cell in diagonal2_cells):
-            return True  # 오른쪽 위에서 왼쪽 아래로 대각선 완성
+            completed_bingo_count += 1  # 오른쪽 위에서 왼쪽 아래로 대각선 완성
 
-        return False  # 빙고가 완성되지 않음
+        return completed_bingo_count
