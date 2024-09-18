@@ -274,32 +274,37 @@ class MyBingoBoardView(APIView):
     def get(self, request):
         user = request.user
 
-        try:
-            user_team = User_Team.objects.get(user=user)
-        except User_Team.DoesNotExist:
+        # 사용자가 속한 모든 User_Team 가져오기
+        user_teams = User_Team.objects.filter(user=user)
+        if not user_teams.exists():
             return Response({'error': '해당 사용자가 참여한 팀이 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
 
-        team = user_team.team
-        bingo = user_team.bingo
+        # 각 빙고판과 그에 속한 팀의 빙고 셀 정보 수집
+        bingo_data = []
+        for user_team in user_teams:
+            team = user_team.team
+            bingo = user_team.bingo
 
-        bingo_cells = BingoCell.objects.filter(bingo=bingo, team=team)
-        cells_data = [
-            {
-                "row": cell.row,
-                "col": cell.col,
-                "content": cell.content,
-                "is_completed": cell.is_completed_yn,
-                "completed_photo": cell.completed_photo.url if cell.completed_photo else None,
-                "completed_text": cell.completed_text
-            }
-            for cell in bingo_cells
-        ]
+            bingo_cells = BingoCell.objects.filter(bingo=bingo, team=team)
+            cells_data = [
+                {
+                    "row": cell.row,
+                    "col": cell.col,
+                    "content": cell.content,
+                    "is_completed": cell.is_completed_yn,
+                    "completed_photo": cell.completed_photo.url if cell.completed_photo else None,
+                    "completed_text": cell.completed_text
+                }
+                for cell in bingo_cells
+            ]
 
-        return Response({
-            "bingo_title": bingo.title,
-            "team_name": team.team_name,
-            "bingo_cells": cells_data
-        }, status=status.HTTP_200_OK)
+            bingo_data.append({
+                "bingo_id": bingo.id,
+                "team_id": team.id,
+                "bingo_cells": cells_data
+            })
+
+        return Response(bingo_data, status=status.HTTP_200_OK)
     
 class DeleteBingoView(APIView):
     # 빙고판 삭제
