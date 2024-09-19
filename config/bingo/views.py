@@ -111,6 +111,7 @@ class TeamDetailView(APIView):
         members = [user_team.name for user_team in user_teams]
 
         response_data = {
+            'bingo_title':bingo.title,
             'team_name': team.team_name,
             'member_count': len(members),
             'members': members
@@ -300,6 +301,7 @@ class MyBingoBoardView(APIView):
 
             bingo_data.append({
                 "bingo_id": bingo.id,
+                "bingo_title": bingo.title,
                 "team_id": team.id,
                 "bingo_cells": cells_data
             })
