@@ -35,7 +35,8 @@ class BingoProgressView(APIView):
         result = {
             'team_name': team.team.team_name,
             'completed_bingo_count': team.completed_bingo_count,
-            'completed_cell_count': team.completed_cell_count
+            'completed_cell_count': team.completed_cell_count,
+            'goal': bingo.goal,  # Bingo 테이블의 goal 정보 추가
         }
 
         return Response(result, status=status.HTTP_200_OK)
@@ -67,4 +68,8 @@ class BingoProgressTotalView(APIView):
         )
 
         # 데이터 응답으로 반환
-        return Response(list(progress_data), status=status.HTTP_200_OK)
+         # goal 정보 포함하여 반환
+        return Response({
+            'goal': bingo.goal,  # bingo 테이블의 goal 필드 추가
+            'progress': list(progress_data)  # 팀별 진행 현황 리스트
+        }, status=status.HTTP_200_OK)
