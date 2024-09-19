@@ -13,7 +13,8 @@ class RecommendMissions(APIView):
     @permission_classes([IsAuthenticated])
     def post(self, request):
         # 제미나이 API 설정
-        genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+        genai.configure(api_key=os.environ.get('GOOGLE_API_KEY'))
+        ##os.getenv("GOOGLE_API_KEY")
 
         # 모델 설정
         generation_config = {
