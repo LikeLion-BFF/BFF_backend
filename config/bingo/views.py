@@ -308,6 +308,18 @@ class MyBingoBoardView(APIView):
 
         return Response(bingo_data, status=status.HTTP_200_OK)
     
+class EndTimeView(APIView):
+    # 빙고 종료 시간 정보 반환
+    @permission_classes([IsAuthenticated])
+    def get(self, request):
+        bingo_id = request.query_params.get('bingo_id')
+        try:
+            bingo = Bingo.objects.get(id=bingo_id)
+        except Bingo.DoesNotExist:
+            return Response({'error': '해당 빙고 게임을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        return Response({"end_date": bingo.end_date}, status=status.HTTP_200_OK)
+    
 class DeleteBingoView(APIView):
     # 빙고판 삭제
     @permission_classes([IsAuthenticated])
