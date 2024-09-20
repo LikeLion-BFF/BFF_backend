@@ -57,6 +57,32 @@ class BingoJoinView(APIView):
             'teams': team_names
         }, status=status.HTTP_200_OK)
 
+# class JoinTeamView(APIView):
+#     # 빙고판 참여 (2단계: 팀 선택 및 참여 완료)
+#     @permission_classes([IsAuthenticated])
+#     def post(self, request):
+#         bingo_id = request.data.get('bingo_id')
+#         team_name = request.data.get('team_name')
+#         name = request.data.get('name')
+
+#         if not bingo_id or not team_name or not name:
+#             return Response({'error': '빙고 ID, 팀 이름 및 닉네임을 제공해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
+
+#         try:
+#             bingo = Bingo.objects.get(id=bingo_id)
+#         except Bingo.DoesNotExist:
+#             return Response({'error': '해당 빙고를 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+
+#         serializer = JoinTeamSerializer(data=request.data, context={'request': request})
+#         if serializer.is_valid():
+#             user_team = serializer.save(user=request.user, bingo=bingo)
+#             return Response({
+#                 'message': '팀 참여가 완료되었습니다.',
+#                 'team': user_team.team.team_name,
+#                 'name': user_team.name
+#             }, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 class JoinTeamView(APIView):
     # 빙고판 참여 (2단계: 팀 선택 및 참여 완료)
     @permission_classes([IsAuthenticated])
@@ -73,15 +99,25 @@ class JoinTeamView(APIView):
         except Bingo.DoesNotExist:
             return Response({'error': '해당 빙고를 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
 
+        try:
+            # 특정 빙고 게임에 속하는 팀을 필터링
+            team = Team.objects.get(bingo=bingo, team_name=team_name)
+        except Team.DoesNotExist:
+            return Response({'error': '해당 팀을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+        except Team.MultipleObjectsReturned:
+            return Response({'error': '여러 팀이 발견되었습니다. 팀 이름을 확인해 주세요.'}, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = JoinTeamSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            user_team = serializer.save(user=request.user, bingo=bingo)
+            user_team = serializer.save(user=request.user, bingo=bingo, team=team)  # team 인자 추가
             return Response({
                 'message': '팀 참여가 완료되었습니다.',
                 'team': user_team.team.team_name,
                 'name': user_team.name
             }, status=status.HTTP_201_CREATED)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
     
 class TeamDetailView(APIView):

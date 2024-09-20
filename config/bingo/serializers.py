@@ -68,24 +68,32 @@ class JoinTeamSerializer(serializers.ModelSerializer):
         fields = ['team_name', 'name', 'bingo_id']
 
     def validate(self, attrs):
-        team_name = attrs.get('team_name')
         bingo_id = attrs.get('bingo_id')
+        team_name = attrs.get('team_name')
 
+        # 특정 bingo_id에 속하는 팀을 필터링
         try:
-            team = Team.objects.get(team_name=team_name)
+            team = Team.objects.get(bingo_id=bingo_id, team_name=team_name)
         except Team.DoesNotExist:
-            raise serializers.ValidationError({'team_name': '유효하지 않은 팀 이름입니다.'})
+            raise serializers.ValidationError('해당 팀을 찾을 수 없습니다.')
+        except Team.MultipleObjectsReturned:
+            raise serializers.ValidationError('여러 팀이 발견되었습니다. 팀 이름을 확인해 주세요.')
 
-        try:
-            bingo = Bingo.objects.get(id=bingo_id)
-        except Bingo.DoesNotExist:
-            raise serializers.ValidationError({'bingo_id': '유효하지 않은 빙고 게임입니다.'})
+        # try:
+        #     team = Team.objects.get(team_name=team_name)
+        # except Team.DoesNotExist:
+        #     raise serializers.ValidationError({'team_name': '유효하지 않은 팀 이름입니다.'})
 
-        if User_Team.objects.filter(user=self.context['request'].user, bingo=bingo).exists():
-            raise serializers.ValidationError({'non_field_errors': '이미 해당 빙고 게임에 참여하고 있습니다.'})
+        # try:
+        #     bingo = Bingo.objects.get(id=bingo_id)
+        # except Bingo.DoesNotExist:
+        #     raise serializers.ValidationError({'bingo_id': '유효하지 않은 빙고 게임입니다.'})
+
+        # if User_Team.objects.filter(user=self.context['request'].user, bingo=bingo).exists():
+        #     raise serializers.ValidationError({'non_field_errors': '이미 해당 빙고 게임에 참여하고 있습니다.'})
 
         attrs['team'] = team
-        attrs['bingo'] = bingo  
+        # attrs['bingo'] = bingo  
         return attrs
 
     def create(self, validated_data):
