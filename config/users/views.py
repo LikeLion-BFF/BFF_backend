@@ -179,6 +179,7 @@ def kakao_login(request):
 @permission_classes([AllowAny])
 def kakao_callback(request):
     code = request.GET.get('code')
+    print(code)
     if not code:
         return Response({'detail': 'Kakao 인증에 실패했습니다.'}, status=400)
 
@@ -209,12 +210,12 @@ def kakao_callback(request):
         'user_created': created
     }
 
-    frontend_redirect_url = os.environ.get('FRONTEND_REDIRECT_URL', '')
-    if frontend_redirect_url:
-        redirect_url = f"{frontend_redirect_url}?{'&'.join(f'{k}={v}' for k, v in response_data.items())}"
-        return redirect(redirect_url)
-    else:
-        return Response(response_data)
+    # frontend_redirect_url = os.environ.get('FRONTEND_REDIRECT_URL', '')
+    # if frontend_redirect_url:
+    #     redirect_url = f"{frontend_redirect_url}?{'&'.join(f'{k}={v}' for k, v in response_data.items())}"
+    #     return redirect(redirect_url)
+    # else:
+    return Response(response_data)
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
