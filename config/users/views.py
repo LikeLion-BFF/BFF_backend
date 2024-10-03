@@ -210,11 +210,6 @@ def kakao_callback(request):
         'user_created': created
     }
 
-    # frontend_redirect_url = os.environ.get('FRONTEND_REDIRECT_URL', '')
-    # if frontend_redirect_url:
-    #     redirect_url = f"{frontend_redirect_url}?{'&'.join(f'{k}={v}' for k, v in response_data.items())}"
-    #     return redirect(redirect_url)
-    # else:
     return Response(response_data)
 
 @api_view(['GET'])
